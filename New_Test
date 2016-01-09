@@ -15,7 +15,7 @@ import com.qualcomm.robotcore.hardware.Servo;
  * Authors of the new Version - Carlos, Nate, Jack, and Chase.
  * Instructed by - Howard
  */
-public class New_Test extends OpMode
+public class New_Test2 extends OpMode
 {
     public enum unloader_state {Center, Left, Right}
     DcMotor left_Drive;
@@ -34,6 +34,9 @@ public class New_Test extends OpMode
     public static final double HI_FILT_CONST = 0.96;
     public static final double MID_FILT_CONST = 0.5;
     public static final double LOW_FILT_CONST = 0.1;
+
+    public static double prev_WhinchPosition = 0;
+
 
     /*final static double unload_Up = .25;
     final static double unload_Down = .78;
@@ -74,8 +77,8 @@ public class New_Test extends OpMode
 
 
     /* filter_input                                             */
-   /*  Purpose is to adjust the stick input for better control */
-   /*  The basic method could be included in the controller    */
+	/*  Purpose is to adjust the stick input for better control */
+	/*  The basic method could be included in the controller    */
 
     public static float filter_input(float instick, float prevStickPos) {
         float filter_constant = 0;  /*init to zero just in case */
@@ -105,11 +108,11 @@ public class New_Test extends OpMode
                 //filter_constant = LOW_FILT_CONST;
             }
         }
-      /*  Basic formula for a simple 1st order filter is:      */
-      /*      ((1-FC)* input) + (FC * prev_value)              */
-      /*  where FC is filter constant ref: wikipedia, et. al.  */
-      /* this works because we set the filter const to 0 under */
-      /* most conditions.  Only nonzero when decreasing & >0.4 */
+		/*  Basic formula for a simple 1st order filter is:      */
+		/*      ((1-FC)* input) + (FC * prev_value)              */
+		/*  where FC is filter constant ref: wikipedia, et. al.  */
+		/* this works because we set the filter const to 0 under */
+		/* most conditions.  Only nonzero when decreasing & >0.4 */
         prevStickPos = ((1-filter_constant)* instick) + (filter_constant * prevStickPos);
         return (prevStickPos);
     }
@@ -202,8 +205,7 @@ public class New_Test extends OpMode
 
         esca_Drive.setPower(esca_drive_effort);
 
-        double whinch_position = 1;
-
+        //code to control whinch position
         if (gamepad2.dpad_up){
             whinch_position = .75;
 
@@ -219,14 +221,16 @@ public class New_Test extends OpMode
                 whinch_position= 0;
             }
         }
-
+        double whinch_position = filter_input(gamepad2.right_bumper, prev_WhinchPosition);
+        prev_WhinchPosition = whinch_position;
         whinch_pos.setPosition(whinch_position);
 
+        //code to control whinch extend
         double whinch_extend = 0;
 
-            if (gamepad2.a) {
-                whinch_extend = .25;
-            }
+        if (gamepad2.a) {
+            whinch_extend = .25;
+        }
 
         if (gamepad2.b){
             whinch_extend = -.25;
