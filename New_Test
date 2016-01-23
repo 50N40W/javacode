@@ -27,6 +27,7 @@ public class New_Test2 extends OpMode
     DcMotor whinch;
 
     Servo whinch_pos;
+    public static double whinch_position = .5;
 
     public static float prev_leftStickPos = 0;
     public static float prev_rightStickPos = 0;
@@ -34,9 +35,6 @@ public class New_Test2 extends OpMode
     public static final double HI_FILT_CONST = 0.96;
     public static final double MID_FILT_CONST = 0.5;
     public static final double LOW_FILT_CONST = 0.1;
-
-    public static double prev_WhinchPosition = 0;
-
 
     /*final static double unload_Up = .25;
     final static double unload_Down = .78;
@@ -64,6 +62,7 @@ public class New_Test2 extends OpMode
 
         right_Drive.setDirection(DcMotor.Direction.REVERSE);
         //left_Drive.setDirection(DcMotor.Direction.REVERSE);
+
 
 
         cur_state = unloader_state.Center;
@@ -206,38 +205,38 @@ public class New_Test2 extends OpMode
         esca_Drive.setPower(esca_drive_effort);
 
         //code to control whinch position
-        if (gamepad2.dpad_up){
-            whinch_position = .75;
 
-            if (gamepad2.right_bumper){
-                whinch_position = .5;
-            }
+
+        if (gamepad2.right_bumper){
+            whinch_position = whinch_position + 0.001;
+        }
+        else if (gamepad2.left_bumper){
+            whinch_position = whinch_position - 0.001;
+        }
+        if (whinch_position < 0)
+        {
+            whinch_position = 0;
+        }
+        if (whinch_position > 0.9)
+        {
+            whinch_position = 0.9;
         }
 
-        if (gamepad2.dpad_down){
-            whinch_position = .25;
-
-            if (gamepad2.left_bumper){
-                whinch_position= 0;
-            }
-        }
-        double whinch_position = filter_input(gamepad2.right_bumper, prev_WhinchPosition);
-        prev_WhinchPosition = whinch_position;
         whinch_pos.setPosition(whinch_position);
+
 
         //code to control whinch extend
         double whinch_extend = 0;
 
-        if (gamepad2.a) {
+        if (gamepad2.b) {
             whinch_extend = .25;
         }
 
-        if (gamepad2.b){
+        if (gamepad2.a){
             whinch_extend = -.25;
         }
 
         whinch.setPower(whinch_extend);
-
 
         //Push Gamepad commands to console
         telemetry.addData("01", "Gamepad1 info" + gamepad1.toString());
