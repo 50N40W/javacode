@@ -24,9 +24,13 @@ public class New_Test2 extends OpMode
 
     Servo Unload;
 
+    Servo Right_Climber_Releaser;
+    Servo Left_Climber_Releaser;
+
     DcMotor whinch;
 
     Servo whinch_pos;
+    public static double whinch_position = .5;
 
     public static float prev_leftStickPos = 0;
     public static float prev_rightStickPos = 0;
@@ -34,9 +38,12 @@ public class New_Test2 extends OpMode
     public static final double HI_FILT_CONST = 0.96;
     public static final double MID_FILT_CONST = 0.5;
     public static final double LOW_FILT_CONST = 0.1;
-
-    public static double prev_WhinchPosition = 0;
-
+    public static double whinch_extend = 0;
+    public static float right_drive_gain = 1;
+    public static float left_drive_gain = 1;
+    public static double max_whinch_pos = .9;
+    public static double whinch_extend_time = 0;
+    public static double whinch_retract_time = 0;
 
     /*final static double unload_Up = .25;
     final static double unload_Down = .78;
@@ -62,9 +69,13 @@ public class New_Test2 extends OpMode
         //DcMotor esca_Drive = hardwareMap.dcMotor.get("esca_drive");
         esca_Drive = hardwareMap.dcMotor.get("esca_drive");
 
-        right_Drive.setDirection(DcMotor.Direction.REVERSE);
-        //left_Drive.setDirection(DcMotor.Direction.REVERSE);
+        Right_Climber_Releaser = hardwareMap.servo.get("Right_Climber_Releaser");
+        Left_Climber_Releaser = hardwareMap.servo.get("Left_Climber_Releaser");
 
+
+        right_Drive.setDirection(DcMotor.Direction.REVERSE);
+
+        max_whinch_pos = .9;
 
         cur_state = unloader_state.Center;
 
@@ -72,6 +83,7 @@ public class New_Test2 extends OpMode
         // Nxt devices start up in "write" mode by default, so no need to switch device modes here.
         left_Drive.setMode(DcMotorController.RunMode.RUN_WITHOUT_ENCODERS);
         right_Drive.setMode(DcMotorController.RunMode.RUN_WITHOUT_ENCODERS);
+
 
     }
 
@@ -121,12 +133,28 @@ public class New_Test2 extends OpMode
     public void loop()
     {
         //Code to control Drive motors
+        right_drive_gain = 1;
+        left_drive_gain = 1;
         float left_drive_effort = filter_input(gamepad1.left_stick_y, prev_leftStickPos);
         prev_leftStickPos = left_drive_effort;
         float right_drive_effort = filter_input(gamepad1.right_stick_y, prev_rightStickPos);
         prev_rightStickPos = right_drive_effort;
-        left_Drive.setPower(left_drive_effort);
-        right_Drive.setPower(right_drive_effort);
+
+        if (gamepad1.right_bumper)
+        {
+            left_drive_gain = Math.min(left_drive_gain, .25f);
+            right_drive_gain = Math.min(right_drive_gain, .25f);
+        }
+
+        if (whinch_extend != 0)
+        {
+            left_drive_gain = Math.min(left_drive_gain, .25f);
+            right_drive_gain = Math.min(right_drive_gain, .25f);
+        }
+
+        left_Drive.setPower(left_drive_effort * left_drive_gain);
+        right_Drive.setPower(right_drive_effort * right_drive_gain);
+
 
         //Code to control unload
         double unload_target = .5;
@@ -206,38 +234,59 @@ public class New_Test2 extends OpMode
         esca_Drive.setPower(esca_drive_effort);
 
         //code to control whinch position
-        if (gamepad2.dpad_up){
-            whinch_position = .75;
 
-            if (gamepad2.right_bumper){
-                whinch_position = .5;
-            }
+
+        if (gamepad2.right_bumper){
+            whinch_position = whinch_position + 0.001;
+        }
+        else if (gamepad2.left_bumper){
+            whinch_position = whinch_position - 0.001;
+        }
+        if (whinch_position < 0)
+        {
+            whinch_position = 0;
+        }
+        if (whinch_position > max_whinch_pos)
+        {
+            whinch_position = max_whinch_pos;
         }
 
-        if (gamepad2.dpad_down){
-            whinch_position = .25;
-
-            if (gamepad2.left_bumper){
-                whinch_position= 0;
-            }
-        }
-        double whinch_position = filter_input(gamepad2.right_bumper, prev_WhinchPosition);
-        prev_WhinchPosition = whinch_position;
         whinch_pos.setPosition(whinch_position);
 
+
         //code to control whinch extend
-        double whinch_extend = 0;
+        whinch_extend = 0;
 
-        if (gamepad2.a) {
+        if (gamepad2.b) {
             whinch_extend = .25;
+            max_whinch_pos = .75;
+            whinch_extend_time += 1;
         }
-
-        if (gamepad2.b){
-            whinch_extend = -.25;
+        else {
+            whinch_extend_time = 0;
+        }
+        if (gamepad2.a){
+            whinch_extend = -.95;
+            whinch_retract_time += 1;
+        }
+        else {
+            whinch_retract_time = 0;
         }
 
         whinch.setPower(whinch_extend);
 
+        double Right_Flip_pos = 0.45   ;
+        double Left_Flip_pos = 0.45;
+
+        if (gamepad2.x) {
+        Right_Flip_pos = 1;
+        }
+        if (gamepad2.y) {
+        Left_Flip_pos = 0;
+        }
+
+        Right_Climber_Releaser.setPosition(Right_Flip_pos);
+        Left_Climber_Releaser.setPosition(Left_Flip_pos);
 
         //Push Gamepad commands to console
         telemetry.addData("01", "Gamepad1 info" + gamepad1.toString());
