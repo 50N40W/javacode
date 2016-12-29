@@ -1,0 +1,171 @@
+
+/**
+ * Simple Simulation of headings bouncing back and forth over True North
+ * Includes noise on simulted gyro return
+ * Write a description of class Headings here.
+ * 
+ * @author Howard Bishop 
+ * @version 20161228.a
+ */
+    import java.util.concurrent.ThreadLocalRandom;
+public class Headings
+{
+
+    // instance variables - replace the example below with your own
+    private int leg; // loop control variable.  Sloppy, but it works for simulation.
+    /*
+    *   adding new legs is a matter of adding a new heading 
+    *   and a rotation Direction to these arrays ... and finding 
+    *   a way to make sure we loop to the correct number of legs
+    */
+    public static int[] Headings = {
+        19, 359, 344, 122, 12
+    };
+    public static int[] rotationDir = {
+        1,   -1,  -1,   1,  1
+    };
+    public static int prevHeading = 0;
+    public static int newHeading = 0;
+    private int deltaHeading = 0;
+    public int accumTurn;
+    public static int neededTurn;
+
+
+    /**
+     * Constructor for objects of class Headings
+     */
+    public Headings()
+    {
+        System.out.printf ("VVVVVVVVVVVVVVVVVVVVVVVV\n");       
+        int deltaHeading;
+        int currHeading = getHeading();
+
+        //currHeading = headingCheck(currHeading);
+
+        for (leg = 0; leg < 3; leg++) {
+            if (rotationDir[leg] > 0) {
+                // rotationDir[i] > 0 means clockwise turn
+                if (currHeading >180) {
+                    if (Headings[leg] <= 180){
+                        neededTurn = Headings[leg] + 360 - currHeading;
+                    }
+                    else if (Headings[leg] < currHeading) {
+                        neededTurn = (360-Headings[leg]) - (360 - currHeading);
+                    }
+                    else {
+                        neededTurn = (currHeading - Headings[leg]);
+                    }
+                }
+                else {
+                    if (Headings[leg] > 180){
+                        neededTurn = 360 - Headings[leg] - currHeading;
+                    }
+                    else if (Headings[leg] < currHeading) {
+                        neededTurn = (360-currHeading -Headings[leg]);
+                    }
+                    else {
+                        neededTurn = (Headings[leg] - currHeading);
+                    }
+                }
+            }
+            else if (rotationDir[leg] < 0) {
+                // rotationDir[i] < 0 means anti clockwise
+                if (currHeading >180) {
+                    if (Headings[leg] <= currHeading){
+                        neededTurn = currHeading - Headings[leg];
+                    }
+                    else if (Headings[leg] > currHeading) {
+                        neededTurn = (360-Headings[leg] - currHeading);
+                    }
+                    else {
+                        neededTurn = (currHeading - Headings[leg]);
+                    }
+                }
+                else {
+                    if (Headings[leg] > 180){
+                        neededTurn = 360 - Headings[leg] + currHeading;
+                    }
+                    else if (Headings[leg] < currHeading) {
+                        neededTurn = (currHeading -Headings[leg]);
+                    }
+                    else {
+                        neededTurn = (360 - Headings[leg] + currHeading);
+                    }
+                }
+            }
+            else {
+                // rotationDir[i] == 0 ... means no turn commnded.
+                neededTurn = 0;
+            }
+            
+            System.out.printf("neededTurn[%d] = %d\n",leg, neededTurn);
+            prevHeading = currHeading;
+            accumTurn = 0;
+           while(accumTurn < neededTurn){
+               // motor command goes here
+                currHeading = getHeading();
+                if (Math.abs(prevHeading - currHeading) > 350) {
+                    if (prevHeading < currHeading) {
+                        accumTurn += prevHeading + 360 - currHeading;
+                    }
+                    else
+                    {
+                        accumTurn += currHeading + 360 - prevHeading;
+                    }
+                }
+                else {
+                    accumTurn += Math.abs(prevHeading - currHeading);
+                }
+             
+                prevHeading = currHeading; 
+
+                System.out.printf("%d %d %d %d\n",Headings[leg], rotationDir[leg], accumTurn, currHeading);
+               
+            }
+           
+
+        }
+        System.out.printf("----------end---------\n\n");
+    }
+
+    
+
+     
+    public int headingCheck(int headingvalue)
+    {
+
+        if (headingvalue >= 360) {
+           headingvalue = headingvalue - 360;
+        }
+        else if (headingvalue < 0) {
+            headingvalue = headingvalue + 360;
+        }
+
+        return (headingvalue);
+    }
+    public int getHeading()
+    {
+        // bogus getHeading.  Has noise for sim.  otherwise
+        // increments or decrements depending on chosen leg's 
+        // rotation direction.
+        int direction = rotationDir[leg];
+        int headingNoise =ThreadLocalRandom.current().nextInt(0, 2) - 1;
+        //headingNoise = 0;
+        if (direction == 0) { 
+           //newHeading = newHeading;
+        }
+        else if (direction == -1) {
+            newHeading--;
+        }
+        else if (direction == 1) {
+            newHeading++;
+        }
+       
+        newHeading += headingNoise;
+        newHeading = headingCheck(newHeading); 
+
+        return (newHeading);
+    }
+    
+}
+
