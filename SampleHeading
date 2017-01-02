@@ -1,15 +1,15 @@
-
-/**
+ /**
  * Simple Simulation of headings bouncing back and forth over True North
  * Includes noise on simulted gyro return
  * 
- * @author Howard Bishop 
- * @version 20161229.d
- *  a.  basic simulation with wrap around the 0/360 barrier  20161228.a   HCB
+ * @author Howard Bishop (HCB)
+ * @version E
+ *  a.  basic simulation with wrap around the 0/360 barrier        20161228.a HCB
  *  b.  (development) Some debug, simplification.  Broke "getNewHeading" into 
- *      a separate method for maintainability and portability. 20161229.b HCB
+ *      a separate method for maintainability and portability.     20161229.b HCB
  *  c.  reformat because geany used some tabs for alignment.  Bah. 20161229.c HCB
  *  d.  rotation needed renamed, rewritten as 1 equation plus prep 20161229.d HCB
+ *  e.  minor cleanup.                                             20170101.e HCB
 */
 import java.util.concurrent.ThreadLocalRandom;
 public class Headings
@@ -59,7 +59,7 @@ public class Headings
         System.out.printf ("VVVVVVVVVVVVVVVVVVVVVVVV\n");       
         for (leg = 0; leg < 5; leg++) {
 	    int currHeading = getHeading();
-	    int desiredRotation = getNeededTurn(currHeading);
+	    int desiredRotation = getNeededTurn(currHeading, Headings[leg], rotationDir[leg]);
             prevHeading = currHeading;
             accumTurn = 0;
             while(accumTurn < desiredRotation){
@@ -68,7 +68,7 @@ public class Headings
                 currHeading = getHeading();
                 if (Math.abs(prevHeading - currHeading) > 350) {
                     if (prevHeading < currHeading) {
-                        accumTurn += prevHeading + 360 - currHeading;
+		        accumTurn += prevHeading + 360 - currHeading;
                     }
                     else {
                         accumTurn += currHeading + 360 - prevHeading;
@@ -94,30 +94,13 @@ public class Headings
     /***********************************************************
      **          calculate necessary turn amount              **  
      **********************************************************/
-    public static int getNeededTurn(int instHeading) {
-        int neededTurn = 0; // 0 means no turn, so default to that.
-        int cw = rotationDir[leg];
-        int op = 0;
-        int transit = 0;
-        if (cw != 0) {
-            cw = cw/(Math.abs(cw));
-            op = -1 * cw;
-        }
-        if (((instHeading > Headings[leg]) && (cw > 0)) ||
-            ((instHeading < Headings[leg]) && (cw < 0))){
-            transit = 360;    	
-        }
-	neededTurn = 
-	  Math.abs(transit + (cw*Headings[leg]) + (op*instHeading));
-	neededTurn = headingCheck(neededTurn);
-	String d = "ccw";
-	if (cw > 0) { 
-	    d = " cw";
-	}  
-	System.out.printf("from %3d->%3d %s. ", instHeading, Headings[leg], d);   
-        System.out.printf("neededTurn[%d] = %3d\n",leg, neededTurn);
+    public static int getNeededTurn(int current, int desired, int cw) {
+        int transit = (((current > desired) && (cw > 0)) ||
+                       ((current < desired) && (cw < 0))) ?  360 : 0;           
+	int neededTurn = Math.abs(transit + (cw*desired) + ((-1*cw)*current));
+	neededTurn = (neededTurn > 360) ? neededTurn - 360 : neededTurn;
         return (neededTurn);
-     }
+    }
     
     /***********************************************/
     public static int headingCheck(int headingvalue)
@@ -146,7 +129,7 @@ public class Headings
 	  * misfortune awaits                             */
         int headingNoise = 
             ThreadLocalRandom.current().nextInt(0, 2) - 1;
-        headingNoise = 0; /** for when you do not want noise */
+        //headingNoise = 0; /** for when you do not want noise */
         if (direction == 0) { 
            //newHeading = newHeading is useless so...
         }
