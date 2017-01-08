@@ -6,4 +6,3 @@ Others exist to help our FTC students understand how to prototype ideas in a sma
 There may be some bits in here that are not java, but are in fact perl, python, or whatever.  
 
 Regardless of the language or whether it's robotics related or not, it's all as open source as the license says.
-(hmm, did I put an MIT license on this?)
