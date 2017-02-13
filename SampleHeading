@@ -1,4 +1,4 @@
- /**
+/**
  * Simple Simulation of headings bouncing back and forth over True North
  * Includes noise on simulted gyro return
  * 
@@ -10,9 +10,15 @@
  *  c.  reformat because geany used some tabs for alignment.  Bah. 20161229.c HCB
  *  d.  rotation needed renamed, rewritten as 1 equation plus prep 20161229.d HCB
  *  e.  minor cleanup.                                             20170101.e HCB
+ *  f.  Major Revision.                                            20170212.f HCB
+ *      f.1 Add sim for system time
+ *      f.2 modify power setting to use magnitude part of the turn direction vector
+ *      f.3 add overshoot correction
+ *      f.4 add "rate of turn" calculation
+ *      f.5 add wind-up based on rate of turn.
 */
 import java.util.concurrent.ThreadLocalRandom;
-public class Headings
+public class gyroTurn3
 {
     private static int leg; // loop control variable.  
     /*
@@ -36,7 +42,7 @@ public class Headings
     //   has potential to allow different rates of turn by increasing the strength.
     //   Just using 1 for now
     public static int[] rotationDir = {
-        1,  -1,   1,  -1, 1
+        1,  0,   1,  -66, 1
     };
     
     // This is a debugging and testing vector.
@@ -50,38 +56,46 @@ public class Headings
     
     public static int prevHeading = 176;
     public static int newHeading = 178;
+    public static double sysClock = 0;
+    public static double degTime = 0;
     /**
      * Constructor for objects of class Headings
      */
-    public static void HeadingSim()
-    {
-	int accumTurn = 0;
+    public static double updateClock(double inTime) {
+	   inTime++;	
+	   return (inTime);
+	}
+	
+    public static int HeadingSim() {
+	    int accumTurn = 0;
+
         System.out.printf ("VVVVVVVVVVVVVVVVVVVVVVVV\n");       
         for (leg = 0; leg < 5; leg++) {
-	    int currHeading = getHeading();
-	    int desiredRotation = getNeededTurn(currHeading, Headings[leg], rotationDir[leg]);
+	        int currHeading = getHeading();
+	        int desiredRotation = getNeededTurn(currHeading, Headings[leg], rotationDir[leg]);
             prevHeading = currHeading;
             accumTurn = 0;
-            while(accumTurn < desiredRotation){
+            while((accumTurn < desiredRotation) && (rotationDir[leg] != 0)){
                // motor commands could go here
+               sysClock = updateClock(sysClock);
                numberSteps[leg]++;
-                currHeading = getHeading();
-                if (Math.abs(prevHeading - currHeading) > 350) {
-                    if (prevHeading < currHeading) {
-		        accumTurn += prevHeading + 360 - currHeading;
-                    }
-                    else {
-                        accumTurn += currHeading + 360 - prevHeading;
-                    }
-                }
-                else {
-                    accumTurn += Math.abs(prevHeading - currHeading);
-                }             
-                prevHeading = currHeading; 
-                System.out.printf("%3d %2d ",Headings[leg], rotationDir[leg]);
-                System.out.printf("%3d %3d %3d\n", accumTurn,currHeading,numberSteps[leg]);              
-            }  
-            Arrival[leg] = currHeading;        
+               currHeading = getHeading();
+               if (Math.abs(prevHeading - currHeading) > 350) {
+                   if (prevHeading < currHeading) {
+		               accumTurn += prevHeading + 360 - currHeading;
+                   }
+                   else {
+                       accumTurn += currHeading + 360 - prevHeading;
+                   }
+               }
+               else {
+                   accumTurn += Math.abs(prevHeading - currHeading);
+               }             
+               prevHeading = currHeading; 
+               System.out.printf("%3d %2d ",Headings[leg], rotationDir[leg]);
+               System.out.printf("%3d %3d %3d\n", accumTurn,currHeading,numberSteps[leg]);              
+           }  
+           Arrival[leg] = currHeading;        
         }
         System.out.printf("\nleg  dir steps Hdg   Arrived\n");
         for (int j = 0; j < 5; j++) {  
@@ -90,18 +104,20 @@ public class Headings
                rotationDir[j],	numberSteps[j], Headings[j], Arrival[j]);
         }
         System.out.printf("----------end---------\n\n");
+        return (0);
     }
     /***********************************************************
      **          calculate necessary turn amount              **  
      **********************************************************/
-    public static int getNeededTurn(int current, int desired, int cw) {
-        int transit = (((current > desired) && (cw > 0)) ||
-                       ((current < desired) && (cw < 0))) ?  360 : 0;           
-	int neededTurn = Math.abs(transit + (cw*desired) + ((-1*cw)*current));
-	neededTurn = (neededTurn > 360) ? neededTurn - 360 : neededTurn;
+    public static int getNeededTurn(int isNow, int want, int cw) {
+    	cw = (cw < 0) ? -1 : 1;
+        int transit = (((isNow > want) && (cw > 0)) ||
+                       ((isNow < want) && (cw < 0))) ?  360 : 0;           
+	    int neededTurn = Math.abs(transit + (cw*want) + ((-1*cw)*isNow));
+	    neededTurn = (neededTurn > 360) ? neededTurn - 360 : neededTurn;
         return (neededTurn);
-    }
-    
+     }
+
     /***********************************************/
     public static int headingCheck(int headingvalue)
     {
@@ -122,6 +138,18 @@ public class Headings
     /******************************************************/
     public static int getHeading()
     {
+		int nomRate = 20;  // turn rate in deg/sec
+		// means that can turn 1 degree in 1000/nomRate milliseconds
+		// so ... have to divide 1000 by nomRate and increment degrees
+		// whenever the system clock has incremented by that many
+		// "milliseconds."
+		int oneDeg = 1000/nomRate;
+		int magnitude = 0;
+		if (sysClock - degTime >= oneDeg) {
+		   magnitude = 1;
+		   degTime = sysClock;
+		}
+		
         int direction = rotationDir[leg];
 	/** this random gives a value of 0, 1, or 2.      *
 	  *  Subtracting 1  moves it to -1, 0, or 1       *
@@ -133,12 +161,12 @@ public class Headings
         if (direction == 0) { 
            //newHeading = newHeading is useless so...
         }
-        else if (direction == -1) {
-            newHeading--;
+        else if (direction < 0) {
+            newHeading -= magnitude;
             //newHeading = newHeading - 2;
         }
-        else if (direction == 1) {
-            newHeading++;
+        else if (direction > 0) {
+            newHeading += magnitude;
             //newHeading = newHeading + 2;
         }
         newHeading += headingNoise;
@@ -150,6 +178,7 @@ public class Headings
     public static void main (String args[]) {
     /** you may need to remove this main method for use in Bluej * 
 	 * I put it in to run it under Geany & Eclipse.              */
-        HeadingSim();
+	    int simRunning = 1;
+	    simRunning = HeadingSim();
     }   
 }
