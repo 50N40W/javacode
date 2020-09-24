@@ -22,9 +22,39 @@ public class loop_control
     private static int actuator_ctr = 0;
  
     public double pretend_stick_input(double in_radians) {
-        double stick_position = Math.sin(in_radians);
-        // question, what does that (double) statement do?
-        //stick_position = stick_position + Math.random()/2 - Math.random()/2;
+        /* pretty much every signal in the world is going to act like
+         * a combination of a sine wave, white noise, and a step function,
+         * so may as well combine those things into a pretend driver input.
+         * We can mess around with how fast it moves, but this should represent 
+         * some theoretical stick movement pretty well
+           */
+        double stick_position = 0;
+        double stick_noise = -0.08 + 0.16 * Math.random();
+        /* Math.random() should return a value between 0 and 1
+         * we want a small amount of noise, say +/- 0.08, so 
+         * first let's "throttle" that 0-1 value down to 0.16
+         * which is 0.08 * 2, then offset it by -0.08.   This
+         * should give us a random number between -0.08 and 0.08, 
+         * that SHOULD be a useful amount of noise for experimentation.
+         */
+        if (in_radians < Math.PI) {
+           stick_position = Math.sin(in_radians);
+        }
+        else if (in_radians < 1.2*Math.PI){
+            stick_position = 1.0;
+        }
+        else if (in_radians < 1.3*Math.PI) {
+            stick_position = -0.6;
+        }
+        else {
+            stick_position = Math.cos(in_radians)*2;
+        }
+        stick_position = stick_position + stick_noise; 
+        
+        stick_position = Math.min(stick_position, 1);
+        stick_position = Math.max(stick_position, -1);
+        /* here we have ensured that stick position will be 
+         * between -1 and 1, inclusive */
         System.out.println(stick_position);
         return stick_position;
     }
@@ -91,7 +121,7 @@ public class loop_control
         // put your code here
         //int i = 0;
         //for (i = 0; i <= 300; i++) {
-        for (radians = 0; radians <= 2*Math.PI; radians = radians + Math.PI/60) {
+        for (radians = 0; radians <= 3*Math.PI; radians = radians + Math.PI/60) {
             //int loop_passed = loop_control();
             double stick = pretend_stick_input(radians);
         }
